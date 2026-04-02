@@ -8,17 +8,16 @@
 ---
 
 ## 2. 실행 환경
-- **OS:** [예: macOS Sonoma 14.4 / Windows 11 WSL2 Ubuntu 22.04]
-- **Shell / Terminal:** [예: zsh / bash]
-- **Docker 버전:** [예: Docker version 26.0.0, build 2ae903e] (OrbStack 기반)
-- **Git 버전:** [예: git version 2.39.3 (Apple Git-146)]
+- **OS:** [macOS Apple Silicon]
+- **Docker 버전:** [Docker version 28.5.2, build ecc6942]
+- **Git 버전:** [git version 2.53.0]
 
 ---
 
 ## 3. 수행 항목 체크리스트
-- [O] 터미널 기본 조작 및 폴더 구성 
-- [O] 권한 변경 실습 및 증거 기록 
-- [O] Docker 설치 및 기본 데몬 점검 
+- [x] 터미널 기본 조작 및 폴더 구성 
+- [x] 권한 변경 실습 및 증거 기록 
+- [x] Docker 설치 및 기본 데몬 점검 
 - [x] Dockerfile 기반 커스텀 이미지 빌드 및 실행 
 - [x] 포트 매핑을 통한 브라우저 접속 증명 
 - [x] Docker 볼륨 생성 및 영속성 검증 
@@ -168,9 +167,42 @@ my-custom-web   1.0       207a27a99f7f   16 minutes ago   62.2MB
 $ docker run -d -p 8080:80 --name my-web-8080 my-custom-web:1.0 
 # -d 데몬모드, -p 포트매핑, --name: 컨테이너 이름
 
+$ docker stats
+
+CONTAINER ID   NAME                 CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS 
+adf32842487c   my-web-8080          0.00%     5.035MiB / 15.67GiB   0.03%     6.38kB / 3.31kB   12MB / 8.19kB     7 
+
 $ docker ps
+
 CONTAINER ID   IMAGE               COMMAND                  CREATED         STATUS         PORTS                                     NAMES
 adf32842487c   my-custom-web:1.0   "/docker-entrypoint.…"   6 minutes ago   Up 6 minutes   0.0.0.0:8080->80/tcp, [::]:8080->80/tcp   my-web-8080
+
+$ docker logs
+
+/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+/docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+10-listen-on-ipv6-by-default.sh: info: Enabled listen on IPv6 in /etc/nginx/conf.d/default.conf
+/docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+/docker-entrypoint.sh: Configuration complete; ready for start up
+2026/04/02 16:14:37 [notice] 1#1: using the "epoll" event method
+2026/04/02 16:14:37 [notice] 1#1: nginx/1.29.7
+2026/04/02 16:14:37 [notice] 1#1: built by gcc 15.2.0 (Alpine 15.2.0) 
+2026/04/02 16:14:37 [notice] 1#1: OS: Linux 6.17.8-orbstack-00308-g8f9c941121b1
+2026/04/02 16:14:37 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 20480:1048576
+2026/04/02 16:14:37 [notice] 1#1: start worker processes
+2026/04/02 16:14:37 [notice] 1#1: start worker process 31
+2026/04/02 16:14:37 [notice] 1#1: start worker process 32
+2026/04/02 16:14:37 [notice] 1#1: start worker process 33
+2026/04/02 16:14:37 [notice] 1#1: start worker process 34
+2026/04/02 16:14:37 [notice] 1#1: start worker process 35
+2026/04/02 16:14:37 [notice] 1#1: start worker process 36
+192.168.215.1 - - [02/Apr/2026:16:16:08 +0000] "GET / HTTP/1.1" 200 15 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36" "-"
+2026/04/02 16:16:08 [error] 34#34: *5 open() "/usr/share/nginx/html/favicon.ico" failed (2: No such file or directory), client: 192.168.215.1, server: localhost, request: "GET /favicon.ico HTTP/1.1", host: "localhost:8080", referrer: "http://localhost:8080/"
+192.168.215.1 - - [02/Apr/2026:16:16:08 +0000] "GET /favicon.ico HTTP/1.1" 404 555 "http://localhost:8080/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36" "-"
 ```
 
 ![ex_screenshot](./img/screenshot1.png)
@@ -274,6 +306,30 @@ $ docker exec codyssey-web-mount cat /usr/share/nginx/html/index.html
 # 결과: <h1>After Change: Real-time Sync Success!</h1>
 ```
 검증결과 호스트에서 수정한 파일이 컨테이너 내에서 즉시 반영됨을 확인하였습니다.
+
+### Git 커밋  로그
+```bash
+$ git log --oneline
+
+8421f5c (HEAD -> main, origin/main) feat: complete docker mission (custom image, bind mount & volume persistence)
+
+$ git config --list
+
+credential.helper=
+user.name=skwn
+init.defaultbranch=main
+core.repositoryformatversion=0
+core.filemode=true
+core.bare=false
+core.logallrefupdates=true
+core.ignorecase=true
+core.precomposeunicode=true
+remote.origin.url=
+remote.origin.fetch=
+branch.main.remote=
+branch.main.merge=
+```
+
 
 ## 트러블 슈팅
 

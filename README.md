@@ -195,11 +195,14 @@ $ docker volume create codyssey-storage
 # 1. 볼륨을 연결하여 컨테이너 실행
 $ docker run -d --name codyssey-web-1 -v codyssey-storage:/usr/share/nginx/html my-custom-web:1.0
 
-# 2. 금고 안에 'verify.txt'라는 데이터 생성
+# 2. 데이터 쓰기
 $ docker exec codyssey-web-1 sh -c 'echo "<h1>Codyssey Mission Success!</h1>" > /usr/share/nginx/html/index.html'
+# -c 뒤 따라오는 명령어 실행
 
 # 3. 데이터가 잘 들어갔는지 확인
-$ docker exec codyssey-web-1 cat /usr/share/nginx/html/index.html
+$ docker exec codyssey-web-1 cat /usr/share/nginx/html/index.html # cat 연결
+
+<h1>Codyssey Mission Success!</h1>
 ```
 
 3단계: 컨테이너 삭제하고 새 컨테이너로 데이터 확인하기
@@ -210,12 +213,79 @@ $ docker rm -f codyssey-web-1
 # 2. 삭제 확인 (목록에 없어야 함)
 $ docker ps -a
 
+CONTAINER ID   IMAGE               COMMAND                  CREATED          STATUS          PORTS                                     NAMES
+adf32842487c   my-custom-web:1.1   "/docker-entrypoint.…"   50 minutes ago   Up 50 minutes   0.0.0.0:8080->80/tcp, [::]:8080->80/tcp   my-web-8080
+
+
 # 3. 두 번째 새로운 컨테이너(container-2)를 만들어서 '같은 데이터' 연결하기
 $ docker run -d --name codyssey-web-2 -v codyssey-storage:/usr/share/nginx/html my-custom-web:1.0
+# -v 전에 데이터와 연결
 
-# 4. 새 컨테이너에서 아까 그 데이터 읽어보기
-$ docker exec codyssey-web-2 cat /usr/share/nginx/html/index.html
+# 4. 목록 확인
+$ docker ps -a
+
+CONTAINER ID   IMAGE               COMMAND                  CREATED          STATUS          PORTS                                     NAMES
+30d297ee76e7   my-custom-web:1.0   "/docker-entrypoint.…"   21 seconds ago   Up 20 seconds   80/tcp                                    codyssey-web-2
+adf32842487c   my-custom-web:1.1   "/docker-entrypoint.…"   52 minutes ago   Up 52 minutes   0.0.0.0:8080->80/tcp, [::]:8080->80/tcp   my-web-8080
+
+# 5. 새 컨테이너에서 아까 그 데이터 읽어보기
+$ docker exec codyssey-web-2 cat /usr/share/nginx/html/index.html # cat 연결
+
+<h1>Codyssey Mission Success!</h1>
 ```
+
+도커 볼륨 생성 성공 하였으며 컨테이너 삭제 후에도 데이터 영속성 유지가 되었음을 확인하였습니다.
 
 #### 바인드 마운트 (Bind Mount) 실습
+
+1단계: 호스트에 실습 폴더와 파일 준비
+```bash
+# 1. 실습용 폴더 생성
+$ mkdir -p ~/codyssey/host-data
+
+# 2. 초기 파일 생성 (변경 전 상태)
+$ echo '<h1>Before Change: Original File</h1>' > ~/codyssey/html-mount/index.html
+
+# 3. 호스트 폴더 내용 확인
+$ ls -l ~/codyssey/html-mount
+
+<h1>Before Change: Original File</h1>
 ```
+
+2단계: 바인드 마운트로 컨테이너 실행
+
+```bash
+$ docker run -d --name codyssey-web-mount \
+  -p 8081:80 \
+  -v ~/codyssey/html-mount:/usr/share/nginx/html \
+  my-custom-web:1.0
+```
+
+3단계: 실시간 동기화 검증 (대조 확인)
+
+```bash
+$ docker exec codyssey-web-mount cat /usr/share/nginx/html/index.html
+# 결과: <h1>Before Change: Original File</h1>
+
+# 호스트 터미널에서 입력
+$ echo '<h1>After Change: Real-time Sync Success!</h1>' > ~/codyssey/html-mount/index.html
+
+$ docker exec codyssey-web-mount cat /usr/share/nginx/html/index.html
+# 결과: <h1>After Change: Real-time Sync Success!</h1>
+```
+검증결과 호스트에서 수정한 파일이 컨테이너 내에서 즉시 반영됨을 확인하였습니다.
+
+## 트러블 슈팅
+
+
+1. 문제 : 바인드 마운트 적용 후 index.html 파일을 찾을 수 없다는 에러(No such file or directory) 발생.
+
+    원인: 바인드 마운트는 호스트의 폴더 내용을 컨테이너의 지정 경로에 덮어씌우는 방식임. 호스트 측 연결 폴더에 index.html 파일이 존재하지 않아 발생한 문제임.
+
+    해결: 호스트 폴더(~/codyssey/html-mount)에 소스 파일이 존재하는지 확인하고, 파일 생성 후 다시 마운트하여 정상 동작을 확인함.
+
+2. 문제 : 포트 8080 점유 문재
+
+    원인 : 이미 8080 포트가 다른 컨테이너에서 이미 사용중임으로 8080 포트를 점유하고 있어 문제가 발생
+
+    해결 : 사용하려고 했던 8080포트를 8081포트로 변경하여 사용함.
